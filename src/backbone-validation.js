@@ -1,3 +1,10 @@
+// Backbone.Validation v0.7.1
+//
+// Copyright (c) 2011-2012 Thomas Pedersen
+// Distributed under MIT License
+//
+// Documentation and full license available at:
+// http://thedersen.com/projects/backbone-validation
 Backbone.Validation = (function(_){
   'use strict';
 
@@ -55,17 +62,42 @@ Backbone.Validation = (function(_){
     into = into || {};
     prefix = prefix || '';
 
-    _.each(obj, function(val, key) {
-      if(obj.hasOwnProperty(key)) {
-        if (val && typeof val === 'object' && !(val instanceof Date || val instanceof RegExp)) {
-          flatten(val, into, prefix + key + '.');
-        }
-        else {
-          into[prefix + key] = val;
-        }
-      }
-    });
-
+    if (_.isArray(obj)) {
+      _.each(obj, function (val) {
+      	if (!val || typeof val !== 'object') {
+      	  if (!into[prefix + "*"]) {
+      		into[prefix + "*"] = [val];
+      	  }
+      	  else {
+      		into[prefix + "*"].push(val);
+      	  }
+      	}
+      	else {
+      	  flatten(val, into, prefix + "*.");
+      	}
+      });
+    } else {
+	  _.each(obj, function(val, key) {
+		if(obj.hasOwnProperty(key)) {
+		  if (val && typeof val === 'object' && !(val instanceof Date || val instanceof RegExp)) {
+		  	flatten(val, into, prefix + key + '.');
+		  }
+		  else {
+		  	if (prefix.indexOf("*") > -1) {
+		  	  if (!into[prefix + key]) {
+		  	  	into[prefix + key] = [val];
+		  	  }
+		  	  else {
+		  	  	into[prefix + key].push(val);
+		  	  }
+		  	}
+		  	else {
+		  	  into[prefix + key] = val;
+		  	}
+		  }
+		}
+	  });
+    }
     return into;
   };
 
@@ -151,8 +183,13 @@ Backbone.Validation = (function(_){
           computed = _.clone(attrs),
           flattened = flatten(attrs);
 
-      _.each(flattened, function(val, attr) {
-        error = validateAttr(model, attr, val, computed);
+      _.each(flattened, function (val, attr) {
+      	if ($.isArray(val)) {
+      	  error = _.find(val, function (val) { return validateAttr(model, attr, val, computed); });
+      	}
+      	else {
+      	  error = validateAttr(model, attr, val, computed);
+      	}
         if (error) {
           invalidAttrs[attr] = error;
           isValid = false;
